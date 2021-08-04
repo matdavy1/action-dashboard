@@ -68,13 +68,13 @@ export default {
     computed: {
         headers() {
             return [
-                { text: "Repository", align: "start", value: "repo" },
+                // { text: "Repository", align: "start", value: "repo" },
                 { text: "Workflow", value: "workflow" },
-                { text: "Branch", value: "branch" },
+                // { text: "Branch", value: "branch" },
                 { text: "Status", value: "status" },
-                { text: "Commit", value: "sha" },
-                { text: "Message", value: "message" },
-                { text: "Committer", value: "committer" },
+                // { text: "Commit", value: "sha" },
+                // { text: "Message", value: "message" },
+                // { text: "Committer", value: "committer" },
                 { text: "Started", value: "createdAt" },
                 { text: "", value: "actions", sortable: false },
             ];
@@ -88,6 +88,7 @@ export default {
                 .then((result) => {
                     console.log("getData results");
                     this.runs = result.data;
+                    console.log(this.runs)
                 })
                 .catch((err) => {
                     console.log("getData error");
