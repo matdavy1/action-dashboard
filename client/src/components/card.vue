@@ -34,75 +34,96 @@ import jsZip from "jszip";
 
 export default {
 
-    data () {
-        return {
-            workflows: null,
-            artifacts: []
-        }
-    },
-    mounted() {
-      axios.get("/api/initialData")
-        .then((result) => { 
-            this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
-            this.workflows.forEach(workflow => workflow['flex'] = 6)
-            if (this.workflows.length % 2 === 1){ 
-              this.workflows[this.workflows.length - 1]['flex'] = 12
-            }
-            console.log(this.workflows)
-        }
-      )
+  data: () => ({
+    workflows: [],
+    token: "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",
+    artifactsForRepo: []
 
-    },
+  }),
 
-    methods: {
+  mounted() {
+    axios.get("/api/initialData").then((result) => { 
+      // this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
+      this.workflows = result.data;
+      console.log(this.workflows)
 
-      clicked(workflow) {
+      var repos = []
+      this.workflows.forEach(workflow => {
+        workflow['flex'] = 6;
+        repos.push(workflow.repo)
+      })
+      if (this.workflows.length % 2 === 1){ 
+        this.workflows[this.workflows.length - 1]['flex'] = 12
+      }
+
+      this.getArtifactsForEachRepo(repos)    
+    })
+  },
+
+  methods: {
+
+    clicked(workflow) {
         //open to github workflow
-        // window.open(`https://github.com/${workflow.owner}/${workflow.repo}/actions?query=workflow%3A${workflow.workflow}`, '_blank').focus();
+      // window.open(`https://github.com/${workflow.owner}/${workflow.repo}/actions?query=workflow%3A${workflow.workflow}`, '_blank').focus();
+      console.log(workflow)
+      this.getArtifactBlob(this.getArtifactURL(workflow)).then(blob => {
+        this.readFromBlob(blob)
+      })
+    },
 
-        //open to cucumber report
-        axios.get(`https://api.github.com/repos/${workflow.owner}/${workflow.repo}/actions/artifacts`,
-          {headers:{'Authorization':'token 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'}, 
-          responseType: 'json'})
-          .then(res => {
-            return res.data.artifacts.find(artifact => artifact.name === workflow.workflow).archive_download_url
-          }).then(url => {
-            axios.get(url,
-              {headers:{'Authorization':'token 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'}, 
-              responseType: 'arraybuffer'}
-            ).then(buffer => {
-            jsZip.loadAsync(buffer.data)
-            .then( zip => {
-              Object.keys(zip.files).forEach(filename => {
-                zip.files[filename].async('string')
-                .then(fileData => {
-                  window.open(fileData, '_blank').focus();
-                  console.log(fileData)      
-                })
-              })
-            })
+    getArtifactURL(workflow){
+      var artifacts = this.artifactsForRepo.find(repo => repo.repoName === workflow.repo).artifacts;
+      return artifacts.find(artifact => artifact.name === workflow.workflow).archive_download_url
+    },
+
+    getArtifactBlob(url){
+      return axios.get(url,
+        {headers:{'Authorization':`token ${this.token}`}, 
+        responseType: 'blob'}
+      )
+    },
+
+    readFromBlob(blob){
+      jsZip.loadAsync(blob.data).then( zip => {
+        Object.keys(zip.files).forEach(filename => {
+          zip.files[filename].async('string')
+          .then(fileData => {
+            window.open(fileData, '_blank').focus();
+            console.log(fileData)      
           })
         })
-      },
+      })
+    },
 
-      getColor(status){
-        switch (status) {
-            case "success":
-                return "#0e6b0e";
+    getArtifactsForEachRepo(repos){
+      var uniqueRepos = [...new Set(repos)]
+      uniqueRepos.forEach(repo => {
+        axios.get(`https://api.github.com/repos/${this.workflows[0].owner}/${repo}/actions/artifacts`,
+        {headers:{'Authorization':`token ${this.token}`}, 
+        responseType: 'json'}).then(res => {
+          this.artifactsForRepo.push({'repoName': repo, 'artifacts': res.data.artifacts})
+        })
+      })
+    },
 
-            case "failure":
-                return "#FF0000";
+    getColor(status){
+      switch (status) {
+          case "success":
+              return "#0e6b0e";
 
-            case "in_progress":
-            case "queued":
-                return "yellow";
+          case "failure":
+              return "#FF0000";
 
-            default:
-                return "transparent";
-        }
-      },
-    }
+          case "in_progress":
+          case "queued":
+              return "yellow";
+
+          default:
+              return "transparent";
+      }
+    },
   }
+}
 </script>
 
 <style scoped>
