@@ -31,12 +31,26 @@
 <script>
 import axios from "axios";
 import jsZip from "jszip";
+import findIndex from "lodash-es/findIndex";
+
 
 export default {
 
+   sockets: {
+        updatedRun(run) {
+            console.log("updatedRun runId: " + run.runId);
+            const index = findIndex(this.runs, { workflowId: run.workflowId, branch: run.branch });
+            if (index >= 0) {
+                this.$set(this.runs, index, run);
+            } else {
+                this.runs.push(run);
+            }
+        },
+    },
+
   data: () => ({
     workflows: [],
-    token: "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",
+    token: "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",
     artifactsForRepo: []
 
   }),
@@ -49,6 +63,10 @@ export default {
 
       var repos = []
       this.workflows.forEach(workflow => {
+        var date = new Date(workflow.createdAt)
+        workflow.createdAt = date.toDateString() + "  " + 
+        date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
+
         workflow['flex'] = 6;
         repos.push(workflow.repo)
       })
