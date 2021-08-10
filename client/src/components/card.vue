@@ -9,18 +9,12 @@
           v-for="workflow in workflows"
           :key="workflow.workflow"
           :cols="workflow.flex"
-
         >
-          <v-card class="card" :color="getColor(workflow.status)" dark>
-            <div class="build-name" v-text="workflow.workflow" >
-              
-
-            </div>
-            <div class="time" v-text="workflow.createdAt">
-              </div>
-            <v-btn class="btn" outlined color="transparent"  @click='clicked(workflow)' >
-
-            </v-btn>
+         <v-card class="card" :color="getColor(workflow.status)" dark>
+            <div class="build-name" v-text="workflow.workflow"></div>
+            <div class="time" v-text="workflow.createdAt"></div>
+            <div v-if="workflow.status === 'failure'" class="error-msg">{{workflow.errorMessage}}</div>
+            <v-btn class="btn" outlined color="transparent" @click='clicked(workflow)' ></v-btn>
           </v-card>
         </v-col>
       </v-row>
@@ -32,7 +26,6 @@
 import axios from "axios";
 import jsZip from "jszip";
 import findIndex from "lodash-es/findIndex";
-
 
 export default {
 
@@ -50,23 +43,17 @@ export default {
 
   data: () => ({
     workflows: [],
-    token: "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",
-    artifactsForRepo: []
-
+    token: "",
   }),
 
   mounted() {
     axios.get("/api/initialData").then((result) => { 
-      // this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
-      this.workflows = result.data;
+      this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
+      // this.workflows = result.data;
       console.log(this.workflows)
 
       var repos = []
       this.workflows.forEach(workflow => {
-        var date = new Date(workflow.createdAt)
-        workflow.createdAt = date.toDateString() + "  " + 
-        date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
-
         workflow['flex'] = 6;
         repos.push(workflow.repo)
       })
@@ -74,55 +61,62 @@ export default {
         this.workflows[this.workflows.length - 1]['flex'] = 12
       }
 
-      this.getArtifactsForEachRepo(repos)    
+      var uniqueRepos = [...new Set(repos)]
+      this.setArtifactsForWorkflows(uniqueRepos)
     })
   },
 
-  methods: {
+   methods: {
+      clicked(workflow) {
+        console.log(workflow.errorMessage)
+        window.open(workflow.cucumberReportUrl, '_blank').focus();
+      },
 
-    clicked(workflow) {
-        //open to github workflow
-      // window.open(`https://github.com/${workflow.owner}/${workflow.repo}/actions?query=workflow%3A${workflow.workflow}`, '_blank').focus();
-      console.log(workflow)
-      this.getArtifactBlob(this.getArtifactURL(workflow)).then(blob => {
-        this.readFromBlob(blob)
-      })
-    },
+      getArtifactURLForWorkflow(workflow, artifacts){
+        return artifacts.find(artifact => artifact.name === workflow.workflow).archive_download_url
+      },
 
-    getArtifactURL(workflow){
-      var artifacts = this.artifactsForRepo.find(repo => repo.repoName === workflow.repo).artifacts;
-      return artifacts.find(artifact => artifact.name === workflow.workflow).archive_download_url
-    },
+      getArtifactBlobForWorkflow(url){
+        return axios.get(url,
+          {headers:{'Authorization':`token ${this.token}`}, 
+          responseType: 'blob'}
+        )
+      },
 
-    getArtifactBlob(url){
-      return axios.get(url,
-        {headers:{'Authorization':`token ${this.token}`}, 
-        responseType: 'blob'}
-      )
-    },
-
-    readFromBlob(blob){
-      jsZip.loadAsync(blob.data).then( zip => {
-        Object.keys(zip.files).forEach(filename => {
-          zip.files[filename].async('string')
-          .then(fileData => {
-            window.open(fileData, '_blank').focus();
-            console.log(fileData)      
+      setArtifactsForWorkflow(blob, workflow){
+        jsZip.loadAsync(blob.data).then( zip => {
+          Object.keys(zip.files).forEach(filename => {
+            zip.files[filename].async('string').then(fileData => {
+              if(filename.includes('error-messages')){
+                workflow['errorMessage'] = fileData;
+              }
+              else if (filename.includes('cucumber-results')){
+                workflow['cucumberReportUrl'] = fileData;
+              }
+            })
           })
         })
-      })
-    },
+      },
 
-    getArtifactsForEachRepo(repos){
-      var uniqueRepos = [...new Set(repos)]
-      uniqueRepos.forEach(repo => {
-        axios.get(`https://api.github.com/repos/${this.workflows[0].owner}/${repo}/actions/artifacts`,
+      getArtifactsForRepo(repo){                       //TODO:Get owner from env variable
+        return axios.get(`https://api.github.com/repos/${this.workflows[0].owner}/${repo}/actions/artifacts`,
         {headers:{'Authorization':`token ${this.token}`}, 
         responseType: 'json'}).then(res => {
-          this.artifactsForRepo.push({'repoName': repo, 'artifacts': res.data.artifacts})
+          return res.data.artifacts
         })
-      })
-    },
+      },
+
+      setArtifactsForWorkflows(repos){
+        repos.forEach(repo => {                    
+          this.getArtifactsForRepo(repo).then(artifacts => {
+            this.workflows.forEach(workflow => {
+              this.getArtifactBlobForWorkflow(this.getArtifactURLForWorkflow(workflow, artifacts)).then(blob => {
+              this.setArtifactsForWorkflow(blob, workflow)
+            })
+          })
+          })
+        })
+      },
 
     getColor(status){
       switch (status) {
@@ -155,6 +149,14 @@ export default {
   line-height: 50px;
   vertical-align: middle;
 }
+.error-msg{
+  font-size: small;
+  font-family: Arial, Helvetica, sans-serif;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
 .time{
   font-size: small;
   font-family: Arial, Helvetica, sans-serif;
