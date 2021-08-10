@@ -47,29 +47,38 @@ export default {
   }),
 
   mounted() {
-    axios.get("/api/initialData").then((result) => { 
-      this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
-      // this.workflows = result.data;
-      console.log(this.workflows)
-
-      var repos = []
-      this.workflows.forEach(workflow => {
-        workflow['flex'] = 6;
-        repos.push(workflow.repo)
-      })
-      if (this.workflows.length % 2 === 1){ 
-        this.workflows[this.workflows.length - 1]['flex'] = 12
-      }
-
-      var uniqueRepos = [...new Set(repos)]
-      this.setArtifactsForWorkflows(uniqueRepos)
-    })
+    this.setupData();
   },
+created() {
+      window.addEventListener('beforeunload', function() {
+         this.setupData();
+      })
+    },
 
    methods: {
       clicked(workflow) {
         console.log(workflow.errorMessage)
         window.open(workflow.cucumberReportUrl, '_blank').focus();
+      },
+
+      setupData(){
+        axios.get("/api/initialData").then((result) => { 
+          this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
+          // this.workflows = result.data;
+          console.log(this.workflows)
+
+          var repos = []
+          this.workflows.forEach(workflow => {
+            workflow['flex'] = 6;
+            repos.push(workflow.repo)
+          })
+          if (this.workflows.length % 2 === 1){ 
+            this.workflows[this.workflows.length - 1]['flex'] = 12
+          }
+
+          var uniqueRepos = [...new Set(repos)]
+          this.setArtifactsForWorkflows(uniqueRepos)
+        })
       },
 
       getArtifactURLForWorkflow(workflow, artifacts){
