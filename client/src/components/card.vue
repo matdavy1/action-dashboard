@@ -45,29 +45,33 @@ export default {
 
   data: () => ({
     workflows: [],
-    token: "",
+    token: "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",
     dataReady: false
-
   }),
 
   mounted() {
     this.setupData();
   },
-created() {
-      window.addEventListener('beforeunload', function() {
-         this.setupData();
-      })
-    },
+
+  created() {
+    window.addEventListener('beforeunload', () => {
+        this.setupData();
+    })
+  },
 
    methods: {
       clicked(workflow) {
-        console.log(workflow.errorMessage)
         window.open(workflow.cucumberReportUrl, '_blank').focus();
       },
 
       setupData(){
         axios.get("/api/initialData").then((result) => { 
           this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
+          this.workflows.forEach(workflow => {
+            let date = new Date(workflow.createdAt)
+            workflow.createdAt = date.toDateString() + "  " + date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
+          })
+
           var repos = []
           this.workflows.forEach(workflow => {
             workflow['flex'] = 6;
@@ -78,9 +82,8 @@ created() {
           }
 
           var uniqueRepos = [...new Set(repos)]
-              this.setArtifactsForWorkflows(uniqueRepos).then(() => {
+          this.setArtifactsForWorkflows(uniqueRepos).then(() => {
             this.dataReady = true
-            console.log('dataReady true')
           })
         })
       },
@@ -106,7 +109,6 @@ created() {
               else if (filename.includes('cucumber-results')){
                 workflow['cucumberReportUrl'] = fileData;
               }
-              console.log('setting error message')
             })
           }
         })
