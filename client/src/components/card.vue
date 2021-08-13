@@ -13,7 +13,9 @@
          <v-card class="card" :color="getColor(workflow.status)" dark>
             <div class="build-name" v-text="workflow.workflow"></div>
             <div class="time" v-text="workflow.createdAt"></div>
-            <div v-if="workflow.status === 'failure'" class="error-msg">{{workflow.errorMessage}}</div>
+            <div v-if="dataReady">
+              <div class="error-msg" v-text="workflow.errorMessage" ></div>
+            </div>
             <v-btn class="btn" outlined color="transparent" @click='clicked(workflow)' ></v-btn>
           </v-card>
         </v-col>
@@ -44,6 +46,8 @@ export default {
   data: () => ({
     workflows: [],
     token: "",
+    dataReady: false
+
   }),
 
   mounted() {
@@ -64,9 +68,6 @@ created() {
       setupData(){
         axios.get("/api/initialData").then((result) => { 
           this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
-          // this.workflows = result.data;
-          console.log(this.workflows)
-
           var repos = []
           this.workflows.forEach(workflow => {
             workflow['flex'] = 6;
@@ -77,7 +78,10 @@ created() {
           }
 
           var uniqueRepos = [...new Set(repos)]
-          this.setArtifactsForWorkflows(uniqueRepos)
+              this.setArtifactsForWorkflows(uniqueRepos).then(() => {
+            this.dataReady = true
+            console.log('dataReady true')
+          })
         })
       },
 
@@ -92,18 +96,19 @@ created() {
         )
       },
 
-      setArtifactsForWorkflow(blob, workflow){
-        jsZip.loadAsync(blob.data).then( zip => {
-          Object.keys(zip.files).forEach(filename => {
-            zip.files[filename].async('string').then(fileData => {
+      async setArtifactsForWorkflow(blob, workflow){
+        await jsZip.loadAsync(blob.data).then(async (zip) => {
+          for (const filename of Object.keys(zip.files)) {
+            await zip.files[filename].async('string').then(fileData => {
               if(filename.includes('error-messages')){
                 workflow['errorMessage'] = fileData;
               }
               else if (filename.includes('cucumber-results')){
                 workflow['cucumberReportUrl'] = fileData;
               }
+              console.log('setting error message')
             })
-          })
+          }
         })
       },
 
@@ -115,16 +120,17 @@ created() {
         })
       },
 
-      setArtifactsForWorkflows(repos){
-        repos.forEach(repo => {                    
-          this.getArtifactsForRepo(repo).then(artifacts => {
-            this.workflows.forEach(workflow => {
-              this.getArtifactBlobForWorkflow(this.getArtifactURLForWorkflow(workflow, artifacts)).then(blob => {
-              this.setArtifactsForWorkflow(blob, workflow)
-            })
-          })
-          })
-        })
+      async setArtifactsForWorkflows(repos){
+        for (const repo of repos){ 
+           await this.getArtifactsForRepo(repo).then(async (artifacts) =>  {
+            for (const workflow of this.workflows) {
+              await this.getArtifactBlobForWorkflow(this.getArtifactURLForWorkflow(workflow, artifacts)).then(async (blob) => {
+                 await this.setArtifactsForWorkflow(blob, workflow)
+              })
+            }
+          })      
+        }
+        
       },
 
     getColor(status){
