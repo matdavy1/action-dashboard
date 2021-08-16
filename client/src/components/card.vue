@@ -12,7 +12,7 @@
         >
          <v-card class="card" :color="getColor(workflow.status)" dark>
             <div class="build-name" v-text="workflow.workflow"></div>
-            <div class="time" v-text="workflow.createdAt"></div>
+            <div class="time" v-text="workflow.readableDate"></div>
             <div v-if="dataReady">
               <div class="error-msg" v-text="workflow.errorMessage" ></div>
             </div>
@@ -45,7 +45,7 @@ export default {
 
   data: () => ({
     workflows: [],
-    token: "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",
+    token: "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",
     dataReady: false
   }),
 
@@ -66,15 +66,13 @@ export default {
 
       setupData(){
         axios.get("/api/initialData").then((result) => { 
-          this.workflows = result.data.filter(workflow => workflow.repo === "my-repo");
-          this.workflows.forEach(workflow => {
-            let date = new Date(workflow.createdAt)
-            workflow.createdAt = date.toDateString() + "  " + date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
-          })
+          // this.workflows = result.data.filter(workflow => workflow.repo === "action-dashboard");
+          this.workflows = result.data;
 
           var repos = []
           this.workflows.forEach(workflow => {
             workflow['flex'] = 6;
+            workflow['readableDate'] = this.setReadableDate(workflow.createdAt)
             repos.push(workflow.repo)
           })
           if (this.workflows.length % 2 === 1){ 
@@ -122,17 +120,20 @@ export default {
         })
       },
 
+      //Will it be easier to have this as one long method with chaining .then()s so we dont have to use async await everywhere?
       async setArtifactsForWorkflows(repos){
         for (const repo of repos){ 
-           await this.getArtifactsForRepo(repo).then(async (artifacts) =>  {
-            for (const workflow of this.workflows) {
-              await this.getArtifactBlobForWorkflow(this.getArtifactURLForWorkflow(workflow, artifacts)).then(async (blob) => {
-                 await this.setArtifactsForWorkflow(blob, workflow)
-              })
+          await this.getArtifactsForRepo(repo).then(async (artifacts) =>  { 
+            if (artifacts.length > 0){//Probably actually need to catch for when workflow has no artifact not just when the repo has none
+              for (const workflow of this.workflows.filter(workflow => workflow.repo === repo)) {
+                await this.getArtifactBlobForWorkflow(
+                  this.getArtifactURLForWorkflow(workflow, artifacts)).then(async (blob) => {
+                  await this.setArtifactsForWorkflow(blob, workflow)
+                })
+              }
             }
           })      
         }
-        
       },
 
     getColor(status){
@@ -151,6 +152,30 @@ export default {
               return "transparent";
       }
     },
+
+    setReadableDate(createdAt){
+        var endDate = new Date(createdAt);
+        var today = new Date();
+        var days = parseInt((today - endDate) / (1000 * 60 * 60 * 24));
+        var hours = parseInt(Math.abs(today - endDate) / (1000 * 60 * 60) % 24);
+        var minutes = parseInt(Math.abs(today.getTime() - endDate.getTime()) / (1000 * 60) % 60);
+        var seconds = parseInt(Math.abs(endDate.getTime() - today.getTime()) / (1000) % 60); 
+
+        let readableDate = '' 
+        if (days > 0){
+          readableDate = days + " days"
+        }
+        else if (hours > 0){
+          readableDate = hours + " hours"
+        }
+        else if (minutes > 0){
+          readableDate = minutes + " minutes"
+        }
+        else {
+          readableDate = seconds + " seconds"
+        }
+        return readableDate + " ago"
+    }
   }
 }
 </script>
