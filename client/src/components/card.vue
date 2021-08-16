@@ -47,7 +47,7 @@ export default {
   data: () => ({
     search: '',
     workflows: [],
-    token: "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",
+    token: "",
     dataReady: false
   }),
 
@@ -84,7 +84,7 @@ export default {
           var repos = []
           this.workflows.forEach(workflow => {
             workflow['flex'] = 6;
-            workflow['readableDate'] = this.setReadableDate(workflow.createdAt)
+            workflow['readableDate'] = this.getReadableDate(workflow.createdAt)
             repos.push(workflow.repo)
           })
           if (this.workflows.length % 2 === 1){ 
@@ -165,7 +165,7 @@ export default {
       }
     },
 
-    setReadableDate(createdAt){
+    getReadableDate(createdAt){
         var endDate = new Date(createdAt);
         var today = new Date();
         var days = parseInt((today - endDate) / (1000 * 60 * 60 * 24));
