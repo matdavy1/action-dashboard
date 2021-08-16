@@ -13,6 +13,7 @@
         >
          <v-card class="card" :color="getColor(workflow.status)" dark>
             <div class="build-name" v-text="workflow.workflow"></div>
+            <div class="repo" v-text="workflow.repo"></div>
             <div class="time" v-text="workflow.readableDate"></div>
             <div v-if="dataReady">
               <div class="error-msg" v-text="workflow.errorMessage" ></div>
@@ -63,12 +64,19 @@ export default {
 
   computed: {
     filteredWorkflows() {
-      return this.workflows.filter(workflow => {
-        let search = this.search.toLowerCase()
-        return workflow.workflow.toLowerCase().includes(search) || 
-        workflow.repo.toLowerCase().includes(search)
-      })
-    }
+        let filteredWorkflows = this.workflows.filter(workflow => {
+          let search = this.search.toLowerCase()
+          return workflow.workflow.toLowerCase().includes(search) || 
+          workflow.repo.toLowerCase().includes(search)
+        })
+        filteredWorkflows.forEach(workflow => {
+          workflow['flex'] = 6;
+        })
+        if (filteredWorkflows.length % 2 === 1){ 
+          filteredWorkflows[filteredWorkflows.length - 1]['flex'] = 12
+        }
+        return filteredWorkflows
+      }
   },
 
    methods: {
@@ -83,13 +91,9 @@ export default {
 
           var repos = []
           this.workflows.forEach(workflow => {
-            workflow['flex'] = 6;
             workflow['readableDate'] = this.getReadableDate(workflow.createdAt)
             repos.push(workflow.repo)
           })
-          if (this.workflows.length % 2 === 1){ 
-            this.workflows[this.workflows.length - 1]['flex'] = 12
-          }
 
           var uniqueRepos = [...new Set(repos)]
           this.setArtifactsForWorkflows(uniqueRepos).then(() => {
@@ -174,17 +178,17 @@ export default {
         var seconds = parseInt(Math.abs(endDate.getTime() - today.getTime()) / (1000) % 60); 
 
         let readableDate = '' 
-        if (days > 0){
-          readableDate = days + " days"
+         if (days > 0){
+          readableDate = days + " day" + (days === 1 ? "" : "s")
         }
         else if (hours > 0){
-          readableDate = hours + " hours"
+          readableDate = hours +  " hour" + (hours === 1 ? "" : "s")
         }
         else if (minutes > 0){
-          readableDate = minutes + " minutes"
+          readableDate = minutes + " minute" + (minutes === 1 ? "" : "s")
         }
         else {
-          readableDate = seconds + " seconds"
+          readableDate = seconds + " second" + (seconds === 1 ? "" : "s")
         }
         return readableDate + " ago"
     }
@@ -209,6 +213,13 @@ export default {
   position: absolute;
   right: 0;
   bottom: 0;
+}
+.repo{
+  font-size: small;
+  font-family: Arial, Helvetica, sans-serif;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .time{
