@@ -3,10 +3,11 @@
     class="mx-auto"
     max-width="1000"
   >
+    <v-text-field v-model="search" label="Search" class="mx-4"></v-text-field>
     <v-container fluid >
       <v-row dense>
         <v-col
-          v-for="workflow in workflows"
+          v-for="workflow in filteredWorkflows"
           :key="workflow.workflow"
           :cols="workflow.flex"
         >
@@ -44,6 +45,7 @@ export default {
     },
 
   data: () => ({
+    search: '',
     workflows: [],
     token: "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",
     dataReady: false
@@ -57,6 +59,16 @@ export default {
     window.addEventListener('beforeunload', () => {
         this.setupData();
     })
+  },
+
+  computed: {
+    filteredWorkflows() {
+      return this.workflows.filter(workflow => {
+        let search = this.search.toLowerCase()
+        return workflow.workflow.toLowerCase().includes(search) || 
+        workflow.repo.toLowerCase().includes(search)
+      })
+    }
   },
 
    methods: {
