@@ -88,6 +88,7 @@ export default {
         axios.get("/api/initialData").then((result) => { 
           // this.workflows = result.data.filter(workflow => workflow.repo === "action-dashboard");
           this.workflows = result.data;
+          console.log(this.workflows)
 
           var repos = []
           this.workflows.forEach(workflow => {
@@ -106,6 +107,7 @@ export default {
         return artifacts.find(artifact => artifact.name === workflow.workflow).archive_download_url
       },
 
+      //Should make call from backend: routes.js -> github.js
       getArtifactBlobForWorkflow(url){
         return axios.get(url,
           {headers:{'Authorization':`token ${this.token}`}, 
@@ -128,7 +130,8 @@ export default {
         })
       },
 
-      getArtifactsForRepo(repo){                       //TODO:Get owner from env variable
+      //Should make call from backend: routes.js -> github.js
+      getArtifactsForRepo(repo){                       
         return axios.get(`https://api.github.com/repos/${this.workflows[0].owner}/${repo}/actions/artifacts`,
         {headers:{'Authorization':`token ${this.token}`}, 
         responseType: 'json'}).then(res => {
