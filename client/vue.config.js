@@ -1,5 +1,6 @@
 const configureAPI = require('../configure');
 
+
 module.exports = {
   chainWebpack: config => {
     config.plugin('html').tap(args => {

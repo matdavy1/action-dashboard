@@ -1,17 +1,10 @@
 <template>
-    <v-app>
-        <v-app-bar app color="primary" dark>
-            <v-app-bar-title>{{ owner }} Action Dashboard</v-app-bar-title>
-        </v-app-bar>
 
-        <v-main>
-            <ActionDashboard />
-        </v-main>
-    </v-app>
+<Card />
 </template>
 
 <script>
-import ActionDashboard from "./components/actiondashboard.vue";
+import Card from "./components/card.vue";
 import axios from "axios";
 
 export default {
@@ -28,7 +21,7 @@ export default {
             });
     },
     components: {
-        ActionDashboard,
+        Card,
     },
     data: () => ({
         owner: "PlaceholderTitleForOwner",
